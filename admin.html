@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Dream TopUp</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#09090B',
+                            panel: '#18181A',
+                            border: '#27272A'
+                        },
+                        orange: {
+                            500: '#F49E0B',
+                            600: '#D98A00',
+                            hover: '#FFB640'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #09090B; color: #ffffff; font-family: 'Poppins', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #18181A; }
+        ::-webkit-scrollbar-thumb { background: #F49E0B; border-radius: 4px; }
+        
+        .flat-input { 
+            background-color: #09090B; 
+            border: 1px solid #27272A; 
+            color: #ffffff; 
+            padding: 12px 16px; 
+            width: 100%; 
+            outline: none; 
+            transition: border-color 0.2s;
+            border-radius: 8px;
+        }
+        .flat-input:focus { border-color: #F49E0B; }
+        
+        .flat-btn { 
+            background-color: #F49E0B; 
+            color: #ffffff; 
+            padding: 12px 24px; 
+            border: none; 
+            cursor: pointer; 
+            font-weight: 600; 
+            transition: background-color 0.2s;
+            border-radius: 8px;
+        }
+        .flat-btn:hover { background-color: #FFB640; }
+        .flat-btn-danger { background-color: #DC2626; }
+        .flat-btn-danger:hover { background-color: #EF4444; }
+        .flat-btn-outline { background-color: transparent; border: 1px solid #F49E0B; color: #F49E0B; }
+        .flat-btn-outline:hover { background-color: #F49E0B; color: #ffffff; }
+
+        .flat-table-container {
+            background-color: #18181A;
+            border-radius: 12px;
+            overflow-x: auto;
+        }
+        .flat-table { width: 100%; border-collapse: collapse; min-width: 700px; }
+        .flat-table th, .flat-table td { 
+            border-bottom: 1px solid #27272A; 
+            padding: 16px; 
+            text-align: left; 
+        }
+        .flat-table th { background-color: #1f1f21; color: #F49E0B; font-weight: 600; text-transform: uppercase; font-size: 0.875rem; letter-spacing: 0.05em; }
+        .flat-table tr:hover td { background-color: #1a1a1c; }
+        .flat-table td { font-size: 0.95rem; }
+
+        .nav-link { 
+            border-radius: 8px; 
+            margin: 4px 12px;
+            color: #A1A1AA;
+            transition: all 0.2s ease-in-out;
+        }
+        .nav-link.active { 
+            background-color: #F49E0B; 
+            color: #ffffff;
+            box-shadow: 0 4px 6px -1px rgba(244, 158, 11, 0.2), 0 2px 4px -1px rgba(244, 158, 11, 0.1);
+        }
+        .nav-link:hover:not(.active) {
+            background-color: #27272A;
+            color: #F49E0B;
+        }
+
+        .card {
+            background-color: #18181A;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        #loading-spinner {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(9, 9, 11, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .spinner {
+            border: 4px solid rgba(244, 158, 11, 0.1);
+            border-left-color: #F49E0B;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        body.locked #sidebar, body.locked #main-content, body.locked #sidebar-backdrop { display: none !important; }
+        .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #F49E0B; transition: background .15s; }
+        .pin-dot.filled { background: #F49E0B; }
+        .pin-key { height: 56px; border-radius: 12px; background: #111; border: 1px solid #2a2a2a; color: #fff; font-size: 22px; font-weight: 600; }
+        .pin-key:active { background: #F49E0B; color: #000; }
+        @keyframes pin-shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-8px)} 40%,80%{transform:translateX(8px)} }
+        .pin-shake { animation: pin-shake .35s; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden locked">
+
+    <!-- PIN LOGIN -->
+    <div id="pin-login" class="fixed inset-0 z-[90] flex items-center justify-center bg-dark-bg p-4">
+        <div class="w-full max-w-xs bg-dark-panel border border-dark-border rounded-2xl p-8 shadow-2xl">
+            <h1 class="text-2xl font-extrabold text-orange-500 tracking-widest text-center">ADMIN<span class="text-white">PANEL</span></h1>
+            <p class="text-center text-gray-400 text-sm mt-2 mb-6">Enter 4-digit PIN</p>
+            <div id="pin-dots" class="flex justify-center gap-4 mb-3">
+                <span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span>
+            </div>
+            <p id="pin-error" class="text-red-400 text-sm text-center min-h-[20px] mb-3"></p>
+            <div class="grid grid-cols-3 gap-3">
+                <button type="button" class="pin-key" onclick="pinPress('1')">1</button>
+                <button type="button" class="pin-key" onclick="pinPress('2')">2</button>
+                <button type="button" class="pin-key" onclick="pinPress('3')">3</button>
+                <button type="button" class="pin-key" onclick="pinPress('4')">4</button>
+                <button type="button" class="pin-key" onclick="pinPress('5')">5</button>
+                <button type="button" class="pin-key" onclick="pinPress('6')">6</button>
+                <button type="button" class="pin-key" onclick="pinPress('7')">7</button>
+                <button type="button" class="pin-key" onclick="pinPress('8')">8</button>
+                <button type="button" class="pin-key" onclick="pinPress('9')">9</button>
+                <button type="button" class="pin-key" onclick="pinClear()" aria-label="Clear"><i class="fas fa-times"></i></button>
+                <button type="button" class="pin-key" onclick="pinPress('0')">0</button>
+                <button type="button" class="pin-key" onclick="pinBack()" aria-label="Backspace"><i class="fas fa-backspace"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading-spinner" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/70 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+    <aside class="w-72 bg-dark-panel border-r border-dark-border flex-col fixed inset-y-0 left-0 z-50 lg:static lg:flex transition-transform transform -translate-x-full lg:translate-x-0" id="sidebar">
+        <div class="p-8 border-b border-dark-border flex items-center justify-center relative">
+            <h1 class="text-2xl font-extrabold text-orange-500 tracking-widest">ADMIN<span class="text-white">PANEL</span></h1>
+            <button class="absolute right-4 top-4 lg:hidden text-gray-400 hover:text-white" onclick="toggleSidebar()">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-6">
+            <a href="#" onclick="switchView('dashboard')" id="nav-dashboard" class="nav-link active flex items-center px-4 py-3">
+                <i class="fas fa-chart-line w-8 text-center"></i> Dashboard
+            </a>
+            <a href="#" onclick="switchView('settings')" id="nav-settings" class="nav-link flex items-center px-4 py-3">
+                <i class="fas fa-cog w-8 text-center"></i> Settings
+            </a>
+            <a href="#" onclick="switchView('categories')" id="nav-categories" class="nav-link flex items-center px-4 py-3">
+                <i class="fas fa-tags w-8 text-center"></i> Categories
+            </a>
+            <a href="#" onclick="switchView('services')" id="nav-services" class="nav-link flex items-center px-4 py-3">
+                <i class="fas fa-gamepad w-8 text-center"></i> Services & Games
+            </a>
+            <a href="#" onclick="switchView('orders')" id="nav-orders" class="nav-link flex items-center px-4 py-3">
+                <i class="fas fa-shopping-cart w-8 text-center"></i> Orders
+            </a>
+            <a href="#" onclick="switchView('deposits')" id="nav-deposits" class="nav-link flex items-center px-4 py-3">
+                <i class="fas fa-wallet w-8 text-center"></i> Deposits
+            </a>
+            <a href="#" onclick="switchView('users')" id="nav-users" class="nav-link flex items-center px-4 py-3">
+                <i class="fas fa-users w-8 text-center"></i> Users
+            </a>
+            <a href="#" onclick="switchView('unpin')" id="nav-unpin" class="nav-link flex items-center px-4 py-3">
+                <i class="fas fa-key w-8 text-center"></i> Unpin Code
+            </a>
+            <a href="#" onclick="switchView('banners')" id="nav-banners" class="nav-link flex items-center px-4 py-3">
+                <i class="fas fa-image w-8 text-center"></i> Banners
+            </a>
+        </nav>
+        <div class="p-4 border-t border-dark-border">
+            <button class="flat-btn flat-btn-outline w-full" onclick="adminLogout()"><i class="fas fa-sign-out-alt mr-2"></i>Logout</button>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col bg-dark-bg overflow-hidden" id="main-content">
+        <header class="bg-dark-panel border-b border-dark-border p-4 md:p-6 flex justify-between items-center z-10">
+            <div class="flex items-center gap-4">
+                <button id="mobile-menu-btn" class="lg:hidden text-orange-500 text-2xl focus:outline-none" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div>
+                    <h2 id="page-title" class="text-xl md:text-2xl font-bold text-white tracking-wide">Dashboard</h2>
+                    <p id="page-desc" class="text-gray-400 text-xs md:text-sm mt-1">Overview of your platform</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="text-right hidden sm:block">
+                    <div class="text-sm font-semibold text-white">Admin User</div>
+                    <div class="text-xs text-gray-400">Administrator</div>
+                </div>
+                <div class="h-10 w-10 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                    A
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 bg-dark-bg">
+            
+            <div id="view-dashboard" class="view-section">
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 md:gap-8 mb-8">
+                    <div class="card flex items-center">
+                        <div class="p-4 bg-orange-500/10 rounded-full mr-4 flex-shrink-0">
+                            <i class="fas fa-users text-2xl md:text-3xl text-orange-500"></i>
+                        </div>
+                        <div>
+                            <div class="text-gray-400 text-sm mb-1 font-medium">Total Users</div>
+                            <div class="text-2xl md:text-4xl font-bold text-white" id="dash-users">0</div>
+                        </div>
+                    </div>
+                    <div class="card flex items-center">
+                        <div class="p-4 bg-blue-500/10 rounded-full mr-4 flex-shrink-0">
+                            <i class="fas fa-shopping-cart text-2xl md:text-3xl text-blue-500"></i>
+                        </div>
+                        <div>
+                            <div class="text-gray-400 text-sm mb-1 font-medium">Total Orders</div>
+                            <div class="text-2xl md:text-4xl font-bold text-white" id="dash-orders">0</div>
+                        </div>
+                    </div>
+                    <div class="card flex items-center">
+                        <div class="p-4 bg-green-500/10 rounded-full mr-4 flex-shrink-0">
+                            <i class="fas fa-wallet text-2xl md:text-3xl text-green-500"></i>
+                        </div>
+                        <div>
+                            <div class="text-gray-400 text-sm mb-1 font-medium">Pending Deposits</div>
+                            <div class="text-2xl md:text-4xl font-bold text-white" id="dash-deposits">0</div>
+                        </div>
+                    </div>
+                    <div class="card flex items-center">
+                        <div class="p-4 bg-purple-500/10 rounded-full mr-4 flex-shrink-0">
+                            <i class="fas fa-dollar-sign text-2xl md:text-3xl text-purple-500"></i>
+                        </div>
+                        <div>
+                            <div class="text-gray-400 text-sm mb-1 font-medium">Total Revenue</div>
+                            <div class="text-2xl md:text-4xl font-bold text-white" id="dash-revenue">৳0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-settings" class="view-section hidden">
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
+                    <div class="card">
+                        <h3 class="text-xl font-bold text-orange-500 mb-6 pb-3 border-b border-dark-border">General Info</h3>
+                        <div class="space-y-5">
+                            <div><label class="block text-sm text-gray-400 mb-2 font-medium">Notice</label><textarea id="set-notice" class="flat-input h-24"></textarea></div>
+                            <div><label class="block text-sm text-gray-400 mb-2 font-medium">App Download Link</label><input type="text" id="set-applink" class="flat-input"></div>
+                        </div>
+                        <button onclick="saveSettings('general')" class="flat-btn mt-6 w-full">Save General Info</button>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="text-xl font-bold text-orange-500 mb-6 pb-3 border-b border-dark-border">Social Links</h3>
+                        <div class="space-y-5">
+                            <div><label class="block text-sm text-gray-400 mb-2 font-medium">WhatsApp Number (e.g., 8801...)</label><input type="text" id="set-whatsapp" class="flat-input"></div>
+                            <div><label class="block text-sm text-gray-400 mb-2 font-medium">Telegram Link</label><input type="text" id="set-telegram" class="flat-input"></div>
+                            <div><label class="block text-sm text-gray-400 mb-2 font-medium">Facebook Link</label><input type="text" id="set-facebook" class="flat-input"></div>
+                            <div><label class="block text-sm text-gray-400 mb-2 font-medium">YouTube Link</label><input type="text" id="set-youtube" class="flat-input"></div>
+                            <div><label class="block text-sm text-gray-400 mb-2 font-medium">Support Link (opens when users click Support in profile menu)</label><input type="text" id="set-support" placeholder="https://t.me/... or https://wa.me/..." class="flat-input"></div>
+                        </div>
+                        <button onclick="saveSettings('social')" class="flat-btn mt-6 w-full">Save Social Links</button>
+                    </div>
+
+                    <div class="card xl:col-span-2">
+                        <h3 class="text-xl font-bold text-orange-500 mb-6 pb-3 border-b border-dark-border">Extra Links</h3>
+                        <p class="text-sm text-gray-400 mb-5">Add unlimited extra links. They appear as buttons below the banner slider on the user panel.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-2 font-medium">Platform Name</label>
+                                <select id="xl-platform" class="flat-input" onchange="toggleXlOther()">
+                                    <option>Telegram</option>
+                                    <option>Facebook</option>
+                                    <option>WhatsApp</option>
+                                    <option>Instagram</option>
+                                    <option>YouTube</option>
+                                    <option>Twitter</option>
+                                    <option>Messenger</option>
+                                    <option>TikTok</option>
+                                    <option>Imo</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-2 font-medium">Type</label>
+                                <select id="xl-type" class="flat-input" onchange="toggleXlOther()">
+                                    <option>Group</option>
+                                    <option>Contact</option>
+                                    <option>Support</option>
+                                    <option>Channel</option>
+                                    <option>Page</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-2 font-medium">Target Link</label>
+                                <input type="text" id="xl-link" placeholder="https://t.me/yourgroup" class="flat-input">
+                            </div>
+                        </div>
+                        <div id="xl-other-platform" class="hidden grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-2 font-medium">Custom Platform Name</label>
+                                <input type="text" id="xl-custom-name" placeholder="e.g. Discord" class="flat-input">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-2 font-medium">Image (Icon) - Upload</label>
+                                <input type="file" accept="image/*" id="xl-custom-image-file" class="flat-input file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-orange-500 file:text-white file:font-semibold file:cursor-pointer" onchange="onPickImage(this,'xl-custom-image','xl-custom-image-prev')"><img id="xl-custom-image-prev" class="hidden h-16 mt-2 rounded-lg border border-dark-border object-contain bg-dark-bg">
+                            </div>
+                        </div>
+                        <div id="xl-other-type" class="hidden mt-5">
+                            <label class="block text-sm text-gray-400 mb-2 font-medium">Custom Type Name</label>
+                            <input type="text" id="xl-custom-type" placeholder="e.g. Community" class="flat-input">
+                        </div>
+                        <button onclick="addExtraLink()" class="flat-btn mt-6 w-full">Save Link</button>
+
+                        <h4 class="text-base font-bold text-white mt-8 mb-3">Saved Extra Links</h4>
+                        <div id="xl-list" class="space-y-3">
+                            <p class="text-sm text-gray-500">No extra links added yet.</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="text-xl font-bold text-orange-500 mb-6 pb-3 border-b border-dark-border">Payment Admin Numbers</h3>
+                        <div class="space-y-5">
+                            <div><label class="block text-sm text-gray-400 mb-2 font-medium">bkash Number</label><input type="text" id="set-bkash" class="flat-input"></div>
+                            <div><label class="block text-sm text-gray-400 mb-2 font-medium">nagad Number</label><input type="text" id="set-nagad" class="flat-input"></div>
+                            <div><label class="block text-sm text-gray-400 mb-2 font-medium">rocket Number</label><input type="text" id="set-rocket" class="flat-input"></div>
+                            <div class="flex items-center gap-3 mt-6 p-4 bg-dark-bg rounded-lg border border-dark-border">
+                                <input type="checkbox" id="set-autopay" class="w-5 h-5 accent-orange-500 rounded">
+                                <label for="set-autopay" class="text-sm md:text-base font-bold text-white cursor-pointer">Enable Auto Pay System</label>
+                            </div>
+                        </div>
+                        <button onclick="saveSettings('payment')" class="flat-btn mt-6 w-full">Save Payment Numbers</button>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="text-xl font-bold text-orange-500 mb-6 pb-3 border-b border-dark-border">Auto TopUp Settings</h3>
+                        <div class="space-y-5">
+                            <div><label class="block text-sm text-gray-400 mb-2 font-medium">API Key</label><input type="text" id="set-api-key" class="flat-input"></div>
+                            <div><label class="block text-sm text-gray-400 mb-2 font-medium">API URL</label><input type="text" id="set-api-url" class="flat-input"></div>
+                            <div><label class="block text-sm text-gray-400 mb-2 font-medium">Callback URL</label><input type="text" id="set-api-callback" class="flat-input"></div>
+                        </div>
+                        <button onclick="saveSettings('advanced')" class="flat-btn mt-6 w-full">Save Auto TopUp Settings</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-categories" class="view-section hidden">
+                <div class="card mb-6 md:mb-8">
+                    <h3 class="text-xl font-bold text-orange-500 mb-6">Add New Category</h3>
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <input type="text" id="cat-name" placeholder="Category Name" class="flat-input flex-1">
+                        <input type="number" id="cat-slot" placeholder="Sort Slot (e.g. 1)" class="flat-input w-full md:w-48">
+                        <button onclick="addCategory()" class="flat-btn whitespace-nowrap">Add Category</button>
+                    </div>
+                </div>
+                <div class="flat-table-container">
+                    <table class="flat-table">
+                        <thead><tr><th>Name</th><th>Slot</th><th class="w-24 text-center">Actions</th></tr></thead>
+                        <tbody id="cat-list"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-services" class="view-section hidden">
+                <div class="card mb-6 md:mb-8">
+                    <h3 class="text-xl font-bold text-orange-500 mb-6">Add New Service/Game</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                        <input type="text" id="srv-name" placeholder="Service Name" class="flat-input">
+                        <div><input type="file" accept="image/*" id="srv-image-file" class="flat-input file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-orange-500 file:text-white file:font-semibold file:cursor-pointer" onchange="onPickImage(this,'srv-image','srv-image-prev')"><img id="srv-image-prev" class="hidden h-16 mt-2 rounded-lg border border-dark-border object-contain bg-dark-bg"></div>
+                        <select id="srv-category" class="flat-input">
+                            <option value="">Select Category</option>
+                        </select>
+                        <select id="srv-type" class="flat-input" onchange="toggleServiceType()">
+                            <option value="uid">UID TopUp (Manual)</option>
+                            <option value="code">Voucher Code (Auto Delivery)</option>
+                            <option value="auto-topup">Auto TopUp (API Delivery)</option>
+                            <option value="subscription">Subscription (WhatsApp Number)</option>
+                            <option value="link">Link (Redirect to Target URL)</option>
+                        </select>
+                        <input type="text" id="srv-link" placeholder="Target Link (https://...)" class="flat-input hidden md:col-span-2">
+                    </div>
+                    <textarea id="srv-rules" placeholder="Rules/Instructions (One per line)" class="flat-input h-24 mb-5"></textarea>
+                    <button onclick="addService()" class="flat-btn w-full">Add Service</button>
+                </div>
+                <div class="flat-table-container">
+                    <table class="flat-table">
+                        <thead><tr><th class="w-20 text-center">Image</th><th>Name</th><th>Type</th><th class="w-40 text-center">Actions</th></tr></thead>
+                        <tbody id="srv-list"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-products" class="view-section hidden">
+                <button onclick="switchView('services')" class="flat-btn-outline mb-6 flex items-center gap-2 w-max"><i class="fas fa-arrow-left"></i> Back to Services</button>
+                <div class="card mb-6 md:mb-8">
+                    <h3 class="text-xl font-bold text-orange-500 mb-6">Manage Packages for: <span id="prod-service-name" class="text-white"></span></h3>
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <input type="text" id="prod-name" placeholder="Package Name (e.g. 100 Diamonds)" class="flat-input flex-1">
+                        <input type="number" id="prod-price" placeholder="Price (৳)" class="flat-input w-full md:w-48">
+                        <button onclick="addProduct()" class="flat-btn whitespace-nowrap">Add Package</button>
+                    </div>
+                </div>
+                <div class="flat-table-container">
+                    <table class="flat-table">
+                        <thead><tr><th>Package Name</th><th>Price</th><th>Stock Count</th><th class="w-40 text-center">Actions</th></tr></thead>
+                        <tbody id="prod-list"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-stock" class="view-section hidden">
+                <button onclick="switchView('products', currentServiceId, currentServiceName)" class="flat-btn-outline mb-6 flex items-center gap-2 w-max"><i class="fas fa-arrow-left"></i> Back to Packages</button>
+                <div class="card mb-6 md:mb-8">
+                    <h3 class="text-xl font-bold text-orange-500 mb-6">Add Stock to: <span id="stock-prod-name" class="text-white"></span></h3>
+                    <textarea id="stock-codes" placeholder="Enter codes here (One code per line)" class="flat-input h-48 mb-5 font-mono text-sm"></textarea>
+                    <button onclick="addStock()" class="flat-btn w-full">Import Codes</button>
+                </div>
+                <div class="card">
+                    <h3 class="text-xl font-bold text-white mb-6">Available Stock</h3>
+                    <div class="flat-table-container">
+                        <table class="flat-table">
+                            <thead><tr><th>Code</th><th>Added Date</th><th class="w-24 text-center">Actions</th></tr></thead>
+                            <tbody id="stock-list"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-orders" class="view-section hidden">
+                <div class="card">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                        <h3 class="text-xl font-bold text-orange-500">All Orders</h3>
+                        <select id="order-filter" class="flat-input w-full md:w-64" onchange="loadOrders()">
+                            <option value="all">All Orders</option>
+                            <option value="pending">Pending</option>
+                            <option value="success">Success / Completed</option>
+                            <option value="cancel">Canceled</option>
+                        </select>
+                    </div>
+                    <div class="flat-table-container">
+                        <table class="flat-table text-sm">
+                            <thead><tr><th>Date</th><th>User</th><th>Game & Package</th><th>Player ID / Code</th><th>Price</th><th>Status</th><th class="w-24 text-center">Actions</th></tr></thead>
+                            <tbody id="order-list"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-deposits" class="view-section hidden">
+                <div class="card">
+                    <h3 class="text-xl font-bold text-orange-500 mb-6">Deposit Requests</h3>
+                    <div class="flat-table-container">
+                        <table class="flat-table text-sm">
+                            <thead><tr><th>Date</th><th>User Email</th><th>Method</th><th>TrxID</th><th>Amount</th><th>Status</th><th class="w-32 text-center">Actions</th></tr></thead>
+                            <tbody id="deposit-list"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-users" class="view-section hidden">
+                <div class="card">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                        <h3 class="text-xl font-bold text-orange-500">User Management</h3>
+                        <div class="relative w-full md:w-80">
+                            <input type="text" id="user-search" placeholder="Search by Email..." class="flat-input pl-10" onkeyup="searchUsers()">
+                            <i class="fas fa-search absolute left-3 top-4 text-gray-400"></i>
+                        </div>
+                    </div>
+                    <div class="flat-table-container">
+                        <table class="flat-table text-sm">
+                            <thead><tr><th>Joined</th><th>Name</th><th>Email</th><th>Balance</th><th class="w-24 text-center">Actions</th></tr></thead>
+                            <tbody id="user-list"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-unpin" class="view-section hidden">
+                <div class="card mb-6 md:mb-8">
+                    <h3 class="text-xl font-bold text-orange-500 mb-6">Add Unpin Code</h3>
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <input type="text" id="unpin-name" placeholder="Unpin Code Name (e.g. UniPin 100 TK)" class="flat-input flex-1">
+                        <input type="text" id="unpin-code" placeholder="Unpin Code" class="flat-input flex-1 font-mono">
+                        <button onclick="addUnpinCode()" class="flat-btn whitespace-nowrap">Add Code</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="text-xl font-bold text-white mb-6">Active Unpin Codes</h3>
+                    <div class="flat-table-container">
+                        <table class="flat-table">
+                            <thead><tr><th>Name</th><th>Code</th><th>Added Date</th><th class="w-24 text-center">Actions</th></tr></thead>
+                            <tbody id="unpin-list"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-banners" class="view-section hidden">
+                <div class="card mb-6 md:mb-8">
+                    <h3 class="text-xl font-bold text-orange-500 mb-6">Add Slider Banner</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2 font-medium">Banner Image (Upload)</label>
+                            <input type="file" accept="image/*" id="ban-img-file" class="flat-input file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-orange-500 file:text-white file:font-semibold file:cursor-pointer" onchange="onPickImage(this,'ban-img','ban-img-prev')"><img id="ban-img-prev" class="hidden h-16 mt-2 rounded-lg border border-dark-border object-contain bg-dark-bg">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2 font-medium">Target Link (optional)</label>
+                            <input type="text" id="ban-link" placeholder="https://... (leave empty = nothing opens on click)" class="flat-input">
+                            <p class="text-xs text-gray-500 mt-2">If a link is set, it opens when a user clicks the banner. If empty, nothing happens.</p>
+                        </div>
+                    </div>
+                    <button onclick="addBanner()" class="flat-btn w-full md:w-auto whitespace-nowrap">Add Banner</button>
+                </div>
+                <div class="flat-table-container">
+                    <table class="flat-table">
+                        <thead><tr><th class="w-32 text-center">Preview</th><th>Target Link</th><th class="w-24 text-center">Actions</th></tr></thead>
+                        <tbody id="ban-list"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        const firebaseConfig = {
+  apiKey: "AIzaSyA5SZ6SQiV3HNqtVA7MNHjCAskJ_x_IxOI",
+  authDomain: "fps-topup.firebaseapp.com",
+  databaseURL: "https://fps-topup-default-rtdb.firebaseio.com",
+  projectId: "fps-topup",
+  storageBucket: "fps-topup.firebasestorage.app",
+  messagingSenderId: "477890517213",
+  appId: "1:477890517213:web:3f1f4923ec23912521a334",
+  measurementId: "G-J442R09LYQ"
+};
+        // Named app: the admin session is stored separately from the user panel's session,
+        // so the admin and the user panel can be signed in with two different accounts.
+        const adminApp = firebase.initializeApp(firebaseConfig, 'adminPanel');
+        const db = adminApp.firestore();
+
+        // ---------- Image upload helpers (resize + compress, stored as data URL in Firestore) ----------
+        const _picked = {};
+        const IMG_MAX = { 'xl-custom-image': 160, 'srv-image': 500, 'e-image': 500, 'ban-img': 1280, 'e-ban-img': 1280 };
+
+        function fileToDataURL(file, maxDim) {
+            return new Promise((resolve, reject) => {
+                if (!file || !/^image\//.test(file.type)) return reject(new Error('Please choose an image file'));
+                const reader = new FileReader();
+                reader.onerror = () => reject(new Error('Could not read the file'));
+                reader.onload = () => {
+                    const img = new Image();
+                    img.onerror = () => reject(new Error('Invalid image'));
+                    img.onload = () => {
+                        let scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+                        const LIMIT = 700000; // keep well under the 1 MB Firestore document limit
+                        let quality = 0.9, out = '';
+                        for (let i = 0; i < 8; i++) {
+                            const c = document.createElement('canvas');
+                            c.width = Math.max(1, Math.round(img.width * scale));
+                            c.height = Math.max(1, Math.round(img.height * scale));
+                            c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                            out = c.toDataURL('image/webp', quality);
+                            if (out.length <= LIMIT) break;
+                            scale *= 0.8; quality = Math.max(0.6, quality - 0.08);
+                        }
+                        if (out.length > LIMIT) return reject(new Error('Image is too large, please choose a smaller one'));
+                        resolve(out);
+                    };
+                    img.src = reader.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function onPickImage(input, key, previewId) {
+            const f = input.files && input.files[0];
+            if (!f) { delete _picked[key]; return; }
+            try {
+                showLoading();
+                _picked[key] = await fileToDataURL(f, IMG_MAX[key] || 600);
+                hideLoading();
+                const pv = document.getElementById(previewId);
+                if (pv) { pv.src = _picked[key]; pv.classList.remove('hidden'); }
+            } catch (err) {
+                hideLoading();
+                delete _picked[key]; input.value = '';
+                Swal.fire('Error', err.message, 'error');
+            }
+        }
+
+        function resetPicker(key, previewId) {
+            delete _picked[key];
+            const f = document.getElementById(key + '-file'); if (f) f.value = '';
+            const pv = document.getElementById(previewId || key + '-prev'); if (pv) { pv.src = ''; pv.classList.add('hidden'); }
+        }
+
+        function normalizeLink(l) {
+            l = (l || '').trim();
+            if (!l) return '';
+            return /^(https?:\/\/|tg:|mailto:)/i.test(l) ? l : 'https://' + l;
+        }
+
+        let currentServiceId = null;
+        let currentServiceName = null;
+        let currentServiceType = null;
+        let currentProductId = null;
+        let currentProductName = null;
+        let allUsers = [];
+
+        function showLoading() { document.getElementById('loading-spinner').style.display = 'flex'; }
+        function hideLoading() { document.getElementById('loading-spinner').style.display = 'none'; }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            sidebar.classList.toggle('-translate-x-full');
+            backdrop.classList.toggle('hidden');
+        }
+
+        // ---------- PIN login (4 digits) ----------
+        const ADMIN_PIN = "2626";
+        let pinValue = '';
+        let pinFails = 0;
+        let pinLockedUntil = 0;
+        let panelStarted = false;
+
+        function pinRender() {
+            document.querySelectorAll('#pin-dots .pin-dot').forEach((d, i) => d.classList.toggle('filled', i < pinValue.length));
+        }
+        function pinError(msg) { const el = document.getElementById('pin-error'); if (el) el.innerText = msg || ''; }
+        function pinPress(d) {
+            if (Date.now() < pinLockedUntil) {
+                return pinError('Too many attempts. Try again in ' + Math.ceil((pinLockedUntil - Date.now()) / 1000) + 's.');
+            }
+            if (pinValue.length >= 4) return;
+            pinValue += d;
+            pinError('');
+            pinRender();
+            if (pinValue.length === 4) setTimeout(pinSubmit, 120);
+        }
+        function pinBack() { pinValue = pinValue.slice(0, -1); pinRender(); }
+        function pinClear() { pinValue = ''; pinError(''); pinRender(); }
+        function pinSubmit() {
+            if (pinValue === ADMIN_PIN) {
+                pinFails = 0;
+                try { sessionStorage.setItem('adminPinOk', '1'); } catch (e) {}
+                pinClear();
+                showPanel();
+                return;
+            }
+            pinFails++;
+            const box = document.getElementById('pin-dots');
+            box.classList.remove('pin-shake'); void box.offsetWidth; box.classList.add('pin-shake');
+            pinValue = ''; pinRender();
+            if (pinFails >= 5) {
+                pinFails = 0;
+                pinLockedUntil = Date.now() + 30000;
+                pinError('Too many attempts. Try again in 30s.');
+            } else {
+                pinError('Wrong PIN.');
+            }
+        }
+        function showPanel() {
+            document.body.classList.remove('locked');
+            document.getElementById('pin-login').classList.add('hidden');
+            if (!panelStarted) { panelStarted = true; switchView('dashboard'); }
+        }
+        function showLogin() {
+            document.body.classList.add('locked');
+            document.getElementById('pin-login').classList.remove('hidden');
+            panelStarted = false;
+            pinClear();
+        }
+        function adminLogout() {
+            try { sessionStorage.removeItem('adminPinOk'); } catch (e) {}
+            showLogin();
+        }
+        document.addEventListener('keydown', (e) => {
+            if (document.getElementById('pin-login').classList.contains('hidden')) return;
+            if (/^[0-9]$/.test(e.key)) pinPress(e.key);
+            else if (e.key === 'Backspace') pinBack();
+        });
+
+        function switchView(viewId, param1 = null, param2 = null, param3 = null) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            
+            const viewEl = document.getElementById('view-' + viewId);
+            if(viewEl) viewEl.classList.remove('hidden');
+            
+            const navEl = document.getElementById('nav-' + viewId);
+            if(navEl) navEl.classList.add('active');
+
+            if (window.innerWidth < 1024) {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+                const backdrop = document.getElementById('sidebar-backdrop');
+                if(backdrop) backdrop.classList.add('hidden');
+            }
+
+            const titles = {
+                dashboard: "Dashboard Overview",
+                settings: "Platform Settings",
+                categories: "Category Management",
+                services: "Services & Games",
+                products: "Package Management",
+                stock: "Stock & Codes Management",
+                orders: "Orders Management",
+                deposits: "Deposit Requests",
+                users: "User Management",
+                unpin: "Unpin Code Management",
+                banners: "Slider Banners"
+            };
+            
+            const pageTitleEl = document.getElementById('page-title');
+            if(pageTitleEl) pageTitleEl.innerText = titles[viewId] || viewId.toUpperCase();
+            
+            const pageDescEl = document.getElementById('page-desc');
+            if(pageDescEl) pageDescEl.innerText = `Manage your ${titles[viewId] ? titles[viewId].toLowerCase() : 'platform'}`;
+
+            if(viewId === 'dashboard') loadDashboardData();
+            if(viewId === 'settings') loadSettings();
+            if(viewId === 'categories') loadCategories();
+            if(viewId === 'services') loadServices();
+            if(viewId === 'products') {
+                currentServiceId = param1; currentServiceName = param2; currentServiceType = param3;
+                const prodNameEl = document.getElementById('prod-service-name');
+                if(prodNameEl) prodNameEl.innerText = param2;
+                loadProducts();
+            }
+            if(viewId === 'stock') {
+                currentProductId = param1; currentProductName = param2;
+                const stockNameEl = document.getElementById('stock-prod-name');
+                if(stockNameEl) stockNameEl.innerText = param2;
+                loadStock();
+            }
+            if(viewId === 'orders') loadOrders();
+            if(viewId === 'deposits') loadDeposits();
+            if(viewId === 'users') loadUsers();
+            if(viewId === 'unpin') loadUnpinCodes();
+            if(viewId === 'banners') loadBanners();
+        }
+
+        async function loadDashboardData() {
+            db.collection('users').get().then(snap => {
+                const el = document.getElementById('dash-users');
+                if(el) el.innerText = snap.size;
+            });
+            db.collection('orders').get().then(snap => {
+                const elOrders = document.getElementById('dash-orders');
+                if(elOrders) elOrders.innerText = snap.size;
+                let rev = 0;
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    if(data.status === 'success' || data.status === 'completed') rev += parseInt(data.price || 0);
+                });
+                const elRev = document.getElementById('dash-revenue');
+                if(elRev) elRev.innerText = '৳' + rev;
+            });
+            db.collection('deposits').where('status', '==', 'pending').get().then(snap => {
+                const elDep = document.getElementById('dash-deposits');
+                if(elDep) elDep.innerText = snap.size;
+            });
+        }
+
+        let extraLinksBound = false;
+        function loadExtraLinks() {
+            if (extraLinksBound) return;
+            extraLinksBound = true;
+            db.collection('extraLinks').orderBy('createdAt').onSnapshot(snap => {
+                const list = document.getElementById('xl-list');
+                if (!list) return;
+                list.innerHTML = '';
+                if (snap.empty) {
+                    list.innerHTML = '<p class="text-sm text-gray-500">No extra links added yet.</p>';
+                    return;
+                }
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center justify-between gap-3 p-3 bg-dark-bg rounded-lg border border-dark-border';
+                    const info = document.createElement('div');
+                    info.className = 'min-w-0';
+                    const t = document.createElement('p');
+                    t.className = 'font-bold text-white text-sm';
+                    t.textContent = (d.platform === 'Other' ? (d.customName || 'Other') : (d.platform || '')) + ' \u2022 ' + (d.type === 'Other' ? (d.customType || 'Other') : (d.type || ''));
+                    const l = document.createElement('a');
+                    l.className = 'text-orange-500 text-xs hover:underline break-all';
+                    l.href = d.link || '#';
+                    l.target = '_blank';
+                    l.rel = 'noopener';
+                    l.textContent = d.link || '';
+                    info.appendChild(t);
+                    info.appendChild(l);
+                    const del = document.createElement('button');
+                    del.className = 'flat-btn flat-btn-danger text-xs py-2 px-3 shrink-0';
+                    del.innerHTML = '<i class="fas fa-trash"></i>';
+                    del.onclick = () => deleteDoc('extraLinks', doc.id);
+                    row.appendChild(info);
+                    row.appendChild(del);
+                    list.appendChild(row);
+                });
+            });
+        }
+
+        function toggleXlOther() {
+            const pl = document.getElementById('xl-platform').value === 'Other';
+            const ty = document.getElementById('xl-type').value === 'Other';
+            document.getElementById('xl-other-platform').classList.toggle('hidden', !pl);
+            document.getElementById('xl-other-type').classList.toggle('hidden', !ty);
+        }
+
+        function addExtraLink() {
+            const platform = document.getElementById('xl-platform').value;
+            const type = document.getElementById('xl-type').value;
+            let link = document.getElementById('xl-link').value.trim();
+            const customName = document.getElementById('xl-custom-name').value.trim();
+            const imageUrl = _picked['xl-custom-image'] || '';
+            const customType = document.getElementById('xl-custom-type').value.trim();
+
+            if (platform === 'Other' && !customName) { Swal.fire('Error', 'Please enter the platform name', 'error'); return; }
+            if (type === 'Other' && !customType) { Swal.fire('Error', 'Please enter the type name', 'error'); return; }
+            if (!link) { Swal.fire('Error', 'Please enter the target link', 'error'); return; }
+            if (!/^(https?:\/\/|tg:|mailto:)/i.test(link)) link = 'https://' + link;
+
+            const data = { platform, type, link, createdAt: Date.now() };
+            if (platform === 'Other') { data.customName = customName; data.imageUrl = imageUrl; }
+            if (type === 'Other') { data.customType = customType; }
+
+            showLoading();
+            db.collection('extraLinks').add(data).then(() => {
+                hideLoading();
+                document.getElementById('xl-link').value = '';
+                document.getElementById('xl-custom-name').value = '';
+                resetPicker('xl-custom-image');
+                document.getElementById('xl-custom-type').value = '';
+                Swal.fire({ title: 'Saved', text: 'Link added successfully', icon: 'success', timer: 1500, showConfirmButton: false });
+            }).catch(err => {
+                hideLoading();
+                Swal.fire('Error', err.message, 'error');
+            });
+        }
+
+        function loadSettings() {
+            loadExtraLinks();
+            db.collection('settings').doc('general').get().then(doc => {
+                if(doc.exists) {
+                    const d = doc.data();
+                    if(document.getElementById('set-notice')) document.getElementById('set-notice').value = d.notice || '';
+                    if(document.getElementById('set-applink')) document.getElementById('set-applink').value = d.appLink || '';
+                    if(document.getElementById('set-whatsapp')) document.getElementById('set-whatsapp').value = d.whatsapp || '';
+                    if(document.getElementById('set-telegram')) document.getElementById('set-telegram').value = d.telegram || '';
+                    if(document.getElementById('set-facebook')) document.getElementById('set-facebook').value = d.facebook || '';
+                    if(document.getElementById('set-youtube')) document.getElementById('set-youtube').value = d.youtube || '';
+                    if(document.getElementById('set-support')) document.getElementById('set-support').value = d.supportLink || '';
+                    if(document.getElementById('set-autopay')) document.getElementById('set-autopay').checked = d.autoPayEnabled || false;
+                    if(document.getElementById('set-api-key')) document.getElementById('set-api-key').value = d.autoTopUpApiKey || '';
+                    if(document.getElementById('set-api-url')) document.getElementById('set-api-url').value = d.autoTopUpApiUrl || '';
+                    if(document.getElementById('set-api-callback')) document.getElementById('set-api-callback').value = d.autoTopUpCallbackUrl || '';
+                }
+            });
+            db.collection('admin').doc('payment').get().then(doc => {
+                if(doc.exists) {
+                    const d = doc.data();
+                    if(document.getElementById('set-bkash')) document.getElementById('set-bkash').value = d.bkash || '';
+                    if(document.getElementById('set-nagad')) document.getElementById('set-nagad').value = d.nagad || '';
+                    if(document.getElementById('set-rocket')) document.getElementById('set-rocket').value = d.rocket || '';
+                }
+            });
+        }
+
+        function saveSettings(type) {
+            showLoading();
+            let p1 = Promise.resolve();
+            let p2 = Promise.resolve();
+
+            if (type === 'general') {
+                const gen = {
+                    notice: document.getElementById('set-notice').value,
+                    appLink: document.getElementById('set-applink').value
+                };
+                p1 = db.collection('settings').doc('general').set(gen, {merge: true});
+            } else if (type === 'social') {
+                p1 = db.collection('settings').doc('general').set({
+                    whatsapp: document.getElementById('set-whatsapp').value,
+                    telegram: document.getElementById('set-telegram').value,
+                    facebook: document.getElementById('set-facebook').value,
+                    youtube: document.getElementById('set-youtube').value,
+                    supportLink: document.getElementById('set-support').value.trim()
+                }, {merge: true});
+            } else if (type === 'payment') {
+                p1 = db.collection('admin').doc('payment').set({
+                    bkash: document.getElementById('set-bkash').value,
+                    nagad: document.getElementById('set-nagad').value,
+                    rocket: document.getElementById('set-rocket').value
+                }, {merge: true});
+                p2 = db.collection('settings').doc('general').set({
+                    autoPayEnabled: document.getElementById('set-autopay').checked
+                }, {merge: true});
+            } else if (type === 'advanced') {
+                p1 = db.collection('settings').doc('general').set({
+                    autoTopUpApiKey: document.getElementById('set-api-key').value,
+                    autoTopUpApiUrl: document.getElementById('set-api-url').value,
+                    autoTopUpCallbackUrl: document.getElementById('set-api-callback').value
+                }, {merge: true});
+            }
+
+            Promise.all([p1, p2]).then(() => {
+                hideLoading();
+                Swal.fire('Saved', 'Settings updated successfully', 'success');
+            }).catch(err => {
+                hideLoading();
+                Swal.fire('Error', err.message, 'error');
+            });
+        }
+
+        // ---------- EDIT / COPY HELPERS ----------
+        const _c = { categories: {}, services: {}, products: {}, banners: {}, unpin: {}, stock: {} };
+        const esc = (v) => String(v === undefined || v === null ? '' : v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+        function copyText(text) {
+            const done = () => Swal.fire({ toast: true, position: 'top', icon: 'success', title: 'Copied', showConfirmButton: false, timer: 1200 });
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+            } else {
+                fallbackCopy(text, done);
+            }
+        }
+        function fallbackCopy(text, done) {
+            const ta = document.createElement('textarea');
+            ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.focus(); ta.select();
+            try { document.execCommand('copy'); done(); } catch (e) { Swal.fire('Error', 'Copy failed', 'error'); }
+            document.body.removeChild(ta);
+        }
+        function copyCode(group, id) {
+            const d = _c[group][id];
+            if (d && d.code) copyText(d.code);
+        }
+        function editFail(err) { hideLoading(); Swal.fire('Error', err.message, 'error'); }
+
+        function editCategory(id) {
+            const d = _c.categories[id]; if (!d) return;
+            Swal.fire({
+                title: 'Edit Category', showCancelButton: true, confirmButtonText: 'Save',
+                html: `<input id="e-name" class="swal2-input" placeholder="Category Name" value="${esc(d.name)}">
+                       <input id="e-slot" type="number" class="swal2-input" placeholder="Slot (order)" value="${esc(d.slot)}">`,
+                preConfirm: () => {
+                    const name = document.getElementById('e-name').value.trim();
+                    if (!name) { Swal.showValidationMessage('Name required'); return false; }
+                    return { name, slot: parseInt(document.getElementById('e-slot').value || 0) };
+                }
+            }).then(r => {
+                if (!r.isConfirmed) return;
+                showLoading();
+                db.collection('categories').doc(id).update(r.value).then(hideLoading).catch(editFail);
+            });
+        }
+
+        function editService(id) {
+            const d = _c.services[id]; if (!d) return;
+            const isLink = d.type === 'link';
+            let catOpts = '<option value="">Select Category</option>';
+            Object.keys(_c.categories).forEach(cid => {
+                catOpts += `<option value="${esc(cid)}" ${cid === d.categoryId ? 'selected' : ''}>${esc(_c.categories[cid].name)}</option>`;
+            });
+            delete _picked['e-image'];
+            Swal.fire({
+                title: 'Edit Game / Service', showCancelButton: true, confirmButtonText: 'Save',
+                html: `<input id="e-name" class="swal2-input" placeholder="Name" value="${esc(d.name)}">
+                       <div style="margin:1em 2em 0;text-align:left;"><div style="font-size:13px;color:#888;margin-bottom:6px;">Image (choose a new one to replace)</div>
+                       <input type="file" accept="image/*" id="e-image-file" onchange="onPickImage(this,'e-image','e-image-prev')">
+                       <img id="e-image-prev" src="${d.image ? esc(d.image) : ''}" style="${d.image ? '' : 'display:none;'}height:64px;margin-top:8px;border-radius:8px;object-fit:contain;"></div>
+                       <select id="e-cat" class="swal2-select" style="display:flex;width:auto;max-width:100%;margin:1em auto;">${catOpts}</select>
+                       ${isLink
+                         ? `<input id="e-link" class="swal2-input" placeholder="Target Link (https://...)" value="${esc(d.targetLink)}">`
+                         : `<textarea id="e-rules" class="swal2-textarea" placeholder="Rules/Instructions (One per line)">${esc(d.rules)}</textarea>`}
+                       <div style="font-size:12px;color:#888;">Type: ${esc(d.type)} (cannot be changed)</div>`,
+                preConfirm: () => {
+                    const name = document.getElementById('e-name').value.trim();
+                    const catId = document.getElementById('e-cat').value;
+                    if (!name || !catId) { Swal.showValidationMessage('Name and Category required'); return false; }
+                    const out = { name, image: _picked['e-image'] || d.image || '', categoryId: catId };
+                    if (isLink) {
+                        const link = document.getElementById('e-link').value.trim();
+                        if (!/^https?:\/\//i.test(link)) { Swal.showValidationMessage('Valid link required (http:// or https://)'); return false; }
+                        out.targetLink = link;
+                    } else {
+                        out.rules = document.getElementById('e-rules').value;
+                    }
+                    return out;
+                }
+            }).then(r => {
+                if (!r.isConfirmed) return;
+                showLoading();
+                db.collection('services').doc(id).update(r.value).then(hideLoading).catch(editFail);
+            });
+        }
+
+        function editProduct(id) {
+            const d = _c.products[id]; if (!d) return;
+            Swal.fire({
+                title: 'Edit Package', showCancelButton: true, confirmButtonText: 'Save',
+                html: `<input id="e-name" class="swal2-input" placeholder="Package Name" value="${esc(d.name)}">
+                       <input id="e-price" type="number" class="swal2-input" placeholder="Price" value="${esc(d.price)}">`,
+                preConfirm: () => {
+                    const name = document.getElementById('e-name').value.trim();
+                    const price = parseInt(document.getElementById('e-price').value);
+                    if (!name || !price) { Swal.showValidationMessage('Name and price required'); return false; }
+                    return { name, price };
+                }
+            }).then(r => {
+                if (!r.isConfirmed) return;
+                showLoading();
+                db.collection('services').doc(currentServiceId).collection('products').doc(id).update(r.value).then(hideLoading).catch(editFail);
+            });
+        }
+
+        function editBanner(id) {
+            const d = _c.banners[id]; if (!d) return;
+            delete _picked['e-ban-img'];
+            Swal.fire({
+                title: 'Edit Banner', showCancelButton: true, confirmButtonText: 'Save',
+                html: `<div style="margin:1em 2em 0;text-align:left;"><div style="font-size:13px;color:#888;margin-bottom:6px;">Banner Image (choose a new one to replace)</div>
+                       <input type="file" accept="image/*" id="e-ban-img-file" onchange="onPickImage(this,'e-ban-img','e-ban-img-prev')">
+                       <img id="e-ban-img-prev" src="${d.image ? esc(d.image) : ''}" style="${d.image ? '' : 'display:none;'}max-height:90px;max-width:100%;margin-top:8px;border-radius:8px;object-fit:cover;"></div>
+                       <input id="e-ban-link" class="swal2-input" placeholder="Target Link (optional)" value="${esc(d.targetLink)}">`,
+                preConfirm: () => {
+                    const image = _picked['e-ban-img'] || d.image;
+                    if (!image) { Swal.showValidationMessage('Banner image required'); return false; }
+                    const link = normalizeLink(document.getElementById('e-ban-link').value);
+                    return { image, targetLink: link ? link : firebase.firestore.FieldValue.delete() };
+                }
+            }).then(r => {
+                if (!r.isConfirmed) return;
+                showLoading();
+                db.collection('banners').doc(id).update(r.value).then(hideLoading).catch(editFail);
+            });
+        }
+
+        function loadCategories() {
+            db.collection('categories').orderBy('slot').onSnapshot(snap => {
+                const list = document.getElementById('cat-list');
+                const drop = document.getElementById('srv-category');
+                if(list) list.innerHTML = '';
+                if(drop) drop.innerHTML = '<option value="">Select Category</option>';
+                snap.forEach(doc => {
+                    const d = doc.data(); _c.categories[doc.id] = d;
+                    if(list) {
+                        list.innerHTML += `<tr>
+                            <td><span class="font-medium text-white">${d.name}</span></td><td>${d.slot}</td>
+                            <td class="text-center whitespace-nowrap"><button onclick="editCategory('${doc.id}')" class="flat-btn flat-btn-outline text-xs py-2 px-3 mr-2" title="Edit"><i class="fas fa-pen"></i></button><button onclick="deleteDoc('categories', '${doc.id}')" class="flat-btn flat-btn-danger text-xs py-2 px-3"><i class="fas fa-trash"></i></button></td>
+                        </tr>`;
+                    }
+                    if(drop) drop.innerHTML += `<option value="${doc.id}">${d.name}</option>`;
+                });
+            });
+        }
+
+        function addCategory() {
+            const name = document.getElementById('cat-name').value;
+            const slot = parseInt(document.getElementById('cat-slot').value || 0);
+            if(!name) return;
+            showLoading();
+            db.collection('categories').add({name, slot}).then(() => {
+                hideLoading();
+                document.getElementById('cat-name').value = '';
+                document.getElementById('cat-slot').value = '';
+            }).catch(err => {
+                hideLoading();
+                Swal.fire('Error', err.message, 'error');
+            });
+        }
+
+        function loadServices() {
+            db.collection('services').onSnapshot(snap => {
+                const list = document.getElementById('srv-list');
+                if(!list) return;
+                list.innerHTML = '';
+                snap.forEach(doc => {
+                    const d = doc.data(); _c.services[doc.id] = d;
+                    list.innerHTML += `<tr>
+                        <td class="text-center"><img src="${d.image}" class="h-12 w-12 object-cover rounded-lg border border-dark-border mx-auto"></td>
+                        <td><span class="font-medium text-white">${d.name}</span></td><td><span class="px-2 py-1 bg-dark-bg rounded text-xs font-semibold uppercase text-orange-500 border border-orange-500/30">${d.type}</span></td>
+                        <td class="text-center space-x-2 whitespace-nowrap">
+                            <button onclick="editService('${doc.id}')" class="flat-btn flat-btn-outline text-xs py-2 px-3 mr-2" title="Edit"><i class="fas fa-pen"></i></button>
+                            ${d.type === 'link'
+                                ? `<a href="${d.targetLink || '#'}" target="_blank" rel="noopener" class="flat-btn flat-btn-outline text-xs py-2 px-3 inline-block" title="${d.targetLink || ''}"><i class="fas fa-link md:mr-1"></i> <span class="hidden md:inline">Link</span></a>`
+                                : `<button onclick="switchView('products', '${doc.id}', '${d.name}', '${d.type}')" class="flat-btn text-xs py-2 px-3"><i class="fas fa-box md:mr-1"></i> <span class="hidden md:inline">Pkgs</span></button>`}
+                            <button onclick="deleteDoc('services', '${doc.id}')" class="flat-btn flat-btn-danger text-xs py-2 px-3"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+                });
+            });
+        }
+
+        function toggleServiceType() {
+            const isLink = document.getElementById('srv-type').value === 'link';
+            document.getElementById('srv-link').classList.toggle('hidden', !isLink);
+            document.getElementById('srv-rules').classList.toggle('hidden', isLink);
+        }
+
+        function addService() {
+            const name = document.getElementById('srv-name').value.trim();
+            const image = _picked['srv-image'] || '';
+            const catId = document.getElementById('srv-category').value;
+            const type = document.getElementById('srv-type').value;
+            const rules = document.getElementById('srv-rules').value;
+            const targetLink = document.getElementById('srv-link').value.trim();
+            if(!name || !catId) return Swal.fire('Error', 'Name and Category required', 'error');
+            const data = {name, image, categoryId: catId, type};
+            if(type === 'link') {
+                if(!/^https?:\/\//i.test(targetLink)) return Swal.fire('Error', 'Valid Target Link required (must start with http:// or https://)', 'error');
+                data.targetLink = targetLink;
+            } else {
+                data.rules = rules;
+            }
+            showLoading();
+            db.collection('services').add(data).then(() => {
+                hideLoading();
+                document.getElementById('srv-name').value = '';
+                resetPicker('srv-image');
+                document.getElementById('srv-rules').value = '';
+                document.getElementById('srv-link').value = '';
+            }).catch(err => {
+                hideLoading();
+                Swal.fire('Error', err.message, 'error');
+            });
+        }
+
+        function loadProducts() {
+            if(!currentServiceId) return;
+            db.collection('services').doc(currentServiceId).collection('products').orderBy('price', 'asc').onSnapshot(snap => {
+                const list = document.getElementById('prod-list');
+                if(!list) return;
+                list.innerHTML = '';
+                snap.forEach(doc => {
+                    const d = doc.data(); _c.products[doc.id] = d;
+                    let stockBtn = '';
+                    if(currentServiceType === 'code' || currentServiceType === 'auto-topup') {
+                        stockBtn = `<button onclick="switchView('stock', '${doc.id}', '${d.name}')" class="flat-btn flat-btn-outline text-xs py-2 px-3 mr-2"><i class="fas fa-key md:mr-1"></i> <span class="hidden md:inline">Stock</span></button>`;
+                    }
+                    list.innerHTML += `<tr>
+                        <td><span class="font-medium text-white">${d.name}</span></td><td class="font-bold text-orange-500">৳${d.price}</td><td>${d.stockCount !== undefined ? d.stockCount : 'N/A'}</td>
+                        <td class="text-center whitespace-nowrap">
+                            ${stockBtn}
+                            <button onclick="editProduct('${doc.id}')" class="flat-btn flat-btn-outline text-xs py-2 px-3 mr-2" title="Edit"><i class="fas fa-pen"></i></button><button onclick="deleteProduct('${doc.id}')" class="flat-btn flat-btn-danger text-xs py-2 px-3"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+                });
+            });
+        }
+
+        function addProduct() {
+            const name = document.getElementById('prod-name').value;
+            const price = parseInt(document.getElementById('prod-price').value);
+            if(!name || !price) return;
+            
+            const data = {name, price};
+            if(currentServiceType === 'code' || currentServiceType === 'auto-topup') {
+                data.stockCount = 0;
+            }
+            showLoading();
+            db.collection('services').doc(currentServiceId).collection('products').add(data).then(() => {
+                hideLoading();
+                document.getElementById('prod-name').value = '';
+                document.getElementById('prod-price').value = '';
+            }).catch(err => {
+                hideLoading();
+                Swal.fire('Error', err.message, 'error');
+            });
+        }
+
+        function deleteProduct(prodId) {
+            Swal.fire({title:'Delete Package?', text:'This cannot be undone.', icon:'warning', showCancelButton:true, confirmButtonColor:'#DC2626'}).then(r => {
+                if(r.isConfirmed) db.collection('services').doc(currentServiceId).collection('products').doc(prodId).delete();
+            });
+        }
+
+        function loadStock() {
+            db.collection('services').doc(currentServiceId).collection('products').doc(currentProductId).collection('stock').where('status', '==', 'available').orderBy('addedAt', 'desc').onSnapshot(snap => {
+                const list = document.getElementById('stock-list');
+                if(!list) return;
+                list.innerHTML = '';
+                snap.forEach(doc => {
+                    const d = doc.data(); _c.stock[doc.id] = d;
+                    const date = d.addedAt ? d.addedAt.toDate().toLocaleString() : 'N/A';
+                    list.innerHTML += `<tr>
+                        <td class="font-mono text-orange-500 cursor-pointer" onclick="copyCode('stock', '${doc.id}')">${d.code}</td><td class="text-gray-400 text-sm">${date}</td>
+                        <td class="text-center whitespace-nowrap"><button onclick="copyCode('stock', '${doc.id}')" class="flat-btn flat-btn-outline text-xs py-2 px-3 mr-2" title="Copy"><i class="fas fa-copy"></i></button><button onclick="deleteStock('${doc.id}')" class="flat-btn flat-btn-danger text-xs py-2 px-3"><i class="fas fa-trash"></i></button></td>
+                    </tr>`;
+                });
+            });
+        }
+
+        function addStock() {
+            const lines = document.getElementById('stock-codes').value.split('\n').map(l => l.trim()).filter(l => l);
+            if(lines.length === 0) return;
+            showLoading();
+            const batch = db.batch();
+            const prodRef = db.collection('services').doc(currentServiceId).collection('products').doc(currentProductId);
+            
+            lines.forEach(code => {
+                const docRef = prodRef.collection('stock').doc();
+                batch.set(docRef, { code: code, status: 'available', addedAt: new Date() });
+            });
+            
+            batch.update(prodRef, { stockCount: firebase.firestore.FieldValue.increment(lines.length) });
+            
+            batch.commit().then(() => {
+                hideLoading();
+                document.getElementById('stock-codes').value = '';
+                Swal.fire('Success', `${lines.length} codes added`, 'success');
+            }).catch(e => {
+                hideLoading();
+                Swal.fire('Error', e.message, 'error');
+            });
+        }
+
+        function deleteStock(stockId) {
+            const prodRef = db.collection('services').doc(currentServiceId).collection('products').doc(currentProductId);
+            const batch = db.batch();
+            batch.delete(prodRef.collection('stock').doc(stockId));
+            batch.update(prodRef, { stockCount: firebase.firestore.FieldValue.increment(-1) });
+            batch.commit();
+        }
+
+        function loadOrders() {
+            const filterEl = document.getElementById('order-filter');
+            if(!filterEl) return;
+            const filter = filterEl.value;
+            let query = db.collection('orders').orderBy('date', 'desc').limit(100);
+            if(filter !== 'all') {
+                query = db.collection('orders').where('status', '==', filter).orderBy('date', 'desc').limit(100);
+            }
+            
+            query.onSnapshot(snap => {
+                const list = document.getElementById('order-list');
+                if(!list) return;
+                list.innerHTML = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const date = d.date ? d.date.toDate().toLocaleString() : 'N/A';
+                    const targetInfo = d.type === 'code' ? `<span class="text-green-500 font-mono">${d.redeemCode || 'N/A'}</span>` : `<span class="text-white">${d.playerId || d.whatsappNumber || d.whatsapp || 'N/A'}</span>`;
+                    
+                    let statusClass = d.status === 'success' || d.status === 'completed' ? 'text-green-500' : (d.status === 'cancel' || d.status === 'rejected' ? 'text-red-500' : 'text-yellow-500');
+
+                    list.innerHTML += `<tr>
+                        <td class="text-gray-400 text-xs">${date}</td><td><span class="font-medium text-white">${d.userName}</span><br><span class="text-xs text-gray-500">${d.userEmail || ''}</span></td>
+                        <td><span class="font-medium text-white">${d.gameName}</span><br><span class="text-xs text-orange-500">${d.productName}</span></td>
+                        <td>${targetInfo}</td><td class="font-bold text-white">৳${d.price}</td>
+                        <td>
+                            <select onchange="updateOrderStatus('${doc.id}', this.value)" class="flat-input text-xs py-1 px-2 ${statusClass} font-semibold uppercase border-none bg-transparent w-full min-w-[120px]">
+                                <option value="pending" ${d.status === 'pending' ? 'selected' : ''} class="text-yellow-500">Pending</option>
+                                <option value="processing" ${d.status === 'processing' ? 'selected' : ''} class="text-yellow-500">Processing</option>
+                                <option value="success" ${(d.status === 'success' || d.status === 'completed') ? 'selected' : ''} class="text-green-500">Success</option>
+                                <option value="cancel" ${(d.status === 'cancel' || d.status === 'rejected') ? 'selected' : ''} class="text-red-500">Canceled</option>
+                            </select>
+                        </td>
+                        <td class="text-center"><button onclick="deleteDoc('orders', '${doc.id}')" class="flat-btn flat-btn-danger text-xs py-2 px-3"><i class="fas fa-trash"></i></button></td>
+                    </tr>`;
+                });
+            });
+        }
+
+        function updateOrderStatus(id, status) {
+            db.collection('orders').doc(id).update({status: status});
+        }
+
+        function loadDeposits() {
+            db.collection('deposits').orderBy('date', 'desc').limit(100).onSnapshot(snap => {
+                const list = document.getElementById('deposit-list');
+                if(!list) return;
+                list.innerHTML = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const date = d.date ? d.date.toDate().toLocaleString() : 'N/A';
+                    let act = '';
+                    if(d.status === 'pending') {
+                        act = `<div class="flex justify-center gap-2"><button onclick="approveDeposit('${doc.id}', '${d.userId}', ${d.amount})" class="flat-btn text-xs bg-green-600 hover:bg-green-700 py-2 px-3"><i class="fas fa-check"></i></button>
+                               <button onclick="rejectDeposit('${doc.id}')" class="flat-btn flat-btn-danger text-xs py-2 px-3"><i class="fas fa-times"></i></button></div>`;
+                    } else {
+                        act = `<div class="text-center"><button onclick="deleteDoc('deposits', '${doc.id}')" class="flat-btn flat-btn-danger text-xs py-2 px-3"><i class="fas fa-trash"></i></button></div>`;
+                    }
+                    const statusClass = d.status === 'approved' ? 'text-green-500 bg-green-500/10 border-green-500/30' : (d.status === 'rejected' ? 'text-red-500 bg-red-500/10 border-red-500/30' : 'text-yellow-500 bg-yellow-500/10 border-yellow-500/30');
+                    
+                    list.innerHTML += `<tr>
+                        <td class="text-gray-400 text-xs">${date}</td><td><span class="font-medium text-white break-all">${d.userEmail}</span></td>
+                        <td><span class="text-white">${d.method}</span></td><td class="font-mono text-orange-500 break-all">${d.trxId}</td><td class="font-bold text-white">৳${d.amount}</td>
+                        <td><span class="px-2 py-1 rounded text-xs font-semibold uppercase border ${statusClass}">${d.status}</span></td>
+                        <td>${act}</td>
+                    </tr>`;
+                });
+            });
+        }
+
+        async function approveDeposit(depId, userId, amount) {
+            Swal.fire({title: `Approve ৳${amount}?`, showCancelButton: true, confirmButtonColor: '#16a34a'}).then(async (r) => {
+                if(r.isConfirmed) {
+                    showLoading();
+                    const userRef = db.collection('users').doc(userId);
+                    const depRef = db.collection('deposits').doc(depId);
+                    try {
+                        await db.runTransaction(async (t) => {
+                            const uDoc = await t.get(userRef);
+                            const newBal = (uDoc.data()?.balance || 0) + amount;
+                            t.update(userRef, {balance: newBal});
+                            t.update(depRef, {status: 'approved'});
+                        });
+                        hideLoading();
+                        Swal.fire('Approved', 'Balance added successfully', 'success');
+                    } catch(e) {
+                        hideLoading();
+                        Swal.fire('Error', e.message, 'error');
+                    }
+                }
+            });
+        }
+
+        function rejectDeposit(depId) {
+            Swal.fire({title: 'Reject Deposit?', showCancelButton: true, confirmButtonColor: '#DC2626'}).then(r => {
+                if(r.isConfirmed) db.collection('deposits').doc(depId).update({status: 'rejected'});
+            });
+        }
+
+        function loadUsers() {
+            db.collection('users').orderBy('createdAt', 'desc').limit(200).onSnapshot(snap => {
+                allUsers = [];
+                snap.forEach(doc => allUsers.push({id: doc.id, ...doc.data()}));
+                renderUsers(allUsers);
+            });
+        }
+
+        function searchUsers() {
+            const el = document.getElementById('user-search');
+            if(!el) return;
+            const term = el.value.toLowerCase();
+            const filtered = allUsers.filter(u => (u.email || '').toLowerCase().includes(term) || (u.name || '').toLowerCase().includes(term));
+            renderUsers(filtered);
+        }
+
+        function renderUsers(users) {
+            const list = document.getElementById('user-list');
+            if(!list) return;
+            list.innerHTML = '';
+            users.forEach(u => {
+                const date = u.createdAt && u.createdAt.toDate ? u.createdAt.toDate().toLocaleDateString() : 'N/A';
+                list.innerHTML += `<tr>
+                    <td class="text-gray-400 text-sm">${date}</td><td><span class="font-medium text-white">${u.name || 'N/A'}</span></td>
+                    <td class="break-all">${u.email}</td><td class="font-bold text-orange-500">৳${u.balance || 0}</td>
+                    <td class="text-center"><button onclick="editBalance('${u.id}', ${u.balance || 0})" class="flat-btn text-xs py-2 px-3 whitespace-nowrap"><i class="fas fa-edit md:mr-1"></i> <span class="hidden md:inline">Bal</span></button></td>
+                </tr>`;
+            });
+        }
+
+        async function editBalance(uid, currentBal) {
+            const { value: newBal } = await Swal.fire({
+                title: 'Edit User Balance',
+                input: 'number',
+                inputValue: currentBal,
+                showCancelButton: true,
+                confirmButtonColor: '#F49E0B',
+                inputValidator: (val) => { if (!val) return 'Please enter a valid number!' }
+            });
+            if (newBal) {
+                showLoading();
+                db.collection('users').doc(uid).update({balance: parseInt(newBal)})
+                  .then(() => { hideLoading(); Swal.fire('Success', 'Balance updated successfully', 'success'); })
+                  .catch(err => { hideLoading(); Swal.fire('Error', err.message, 'error'); });
+            }
+        }
+
+        function loadUnpinCodes() {
+            db.collection('unpin_codes').orderBy('addedAt', 'desc').onSnapshot(snap => {
+                const list = document.getElementById('unpin-list');
+                if(!list) return;
+                list.innerHTML = '';
+                snap.forEach(doc => {
+                    const d = doc.data(); _c.unpin[doc.id] = d;
+                    const date = d.addedAt ? d.addedAt.toDate().toLocaleString() : 'N/A';
+                    list.innerHTML += `<tr>
+                        <td class="font-medium text-white">${d.name || '-'}</td><td class="font-mono text-orange-500 md:text-lg cursor-pointer" onclick="copyCode('unpin', '${doc.id}')" title="Click to copy">${d.code}</td><td class="text-gray-400 text-sm">${date}</td>
+                        <td class="text-center whitespace-nowrap"><button onclick="copyCode('unpin', '${doc.id}')" class="flat-btn flat-btn-outline text-xs py-2 px-3 mr-2" title="Copy"><i class="fas fa-copy md:mr-1"></i> <span class="hidden md:inline">Copy</span></button><button onclick="deleteDoc('unpin_codes', '${doc.id}')" class="flat-btn flat-btn-danger text-xs py-2 px-3"><i class="fas fa-trash"></i></button></td>
+                    </tr>`;
+                });
+            });
+        }
+
+        function addUnpinCode() {
+            const name = document.getElementById('unpin-name').value.trim();
+            const code = document.getElementById('unpin-code').value.trim();
+            if(!code) return;
+            showLoading();
+            db.collection('unpin_codes').add({name, code, addedAt: new Date()}).then(() => {
+                hideLoading();
+                document.getElementById('unpin-name').value = '';
+                document.getElementById('unpin-code').value = '';
+            }).catch(err => {
+                hideLoading();
+                Swal.fire('Error', err.message, 'error');
+            });
+        }
+
+        function loadBanners() {
+            db.collection('banners').onSnapshot(snap => {
+                const list = document.getElementById('ban-list');
+                if(!list) return;
+                list.innerHTML = '';
+                snap.forEach(doc => {
+                    const d = doc.data(); _c.banners[doc.id] = d;
+                    list.innerHTML += `<tr>
+                        <td class="text-center"><img src="${d.image}" class="h-12 md:h-16 w-24 md:w-32 object-cover rounded-lg border border-dark-border mx-auto"></td>
+                        <td class="text-xs md:text-sm text-gray-400 break-all">${d.targetLink ? `<a href="${esc(d.targetLink)}" target="_blank" rel="noopener" class="text-orange-500 hover:underline">${esc(d.targetLink)}</a>` : '<span class="text-gray-500">No link (click does nothing)</span>'}</td>
+                        <td class="text-center whitespace-nowrap"><button onclick="editBanner('${doc.id}')" class="flat-btn flat-btn-outline text-xs py-2 px-3 mr-2" title="Edit"><i class="fas fa-pen"></i></button><button onclick="deleteDoc('banners', '${doc.id}')" class="flat-btn flat-btn-danger text-xs py-2 px-3"><i class="fas fa-trash"></i></button></td>
+                    </tr>`;
+                });
+            });
+        }
+
+        function addBanner() {
+            const image = _picked['ban-img'];
+            if (!image) return Swal.fire('Error', 'Please upload a banner image', 'error');
+            const data = { image };
+            const link = normalizeLink(document.getElementById('ban-link').value);
+            if (link) data.targetLink = link;
+            showLoading();
+            db.collection('banners').add(data).then(() => {
+                hideLoading();
+                resetPicker('ban-img');
+                document.getElementById('ban-link').value = '';
+            }).catch(err => {
+                hideLoading();
+                Swal.fire('Error', err.message, 'error');
+            });
+        }
+
+        function deleteDoc(collection, id) {
+            Swal.fire({title:'Are you sure?', text:'This item will be permanently deleted.', icon:'warning', showCancelButton:true, confirmButtonColor:'#DC2626'})
+            .then(r => {
+                if(r.isConfirmed) db.collection(collection).doc(id).delete();
+            });
+        }
+    </script>
+
+    <script>
+        (function () {
+            hideLoading();
+            let ok = false;
+            try { ok = sessionStorage.getItem('adminPinOk') === '1'; } catch (e) {}
+            if (ok) showPanel(); else showLogin();
+        })();
+    </script>
+</body>
+</html>
